@@ -1,5 +1,5 @@
 import { ANCHOR } from '../constants'
-import { fetchTides } from './tides'
+import { fetchTides, fetchDailyTides } from './tides'
 
 const MS_TO_KT = 1.943844
 const GUST_FACTOR = 1.45
@@ -120,9 +120,10 @@ export async function fetchMetNoCurrent() {
 }
 
 export async function fetchMetNoForecast() {
-  const [locationResult, oceanResult] = await Promise.allSettled([
+  const [locationResult, oceanResult, tidesResult] = await Promise.allSettled([
     fetchJson(LOCATION_URL),
     fetchJson(OCEAN_URL),
+    fetchDailyTides(),
   ])
 
   if (locationResult.status === 'rejected') {
@@ -131,6 +132,9 @@ export async function fetchMetNoForecast() {
 
   const degraded = []
   if (oceanResult.status === 'rejected') degraded.push('marine')
+  if (tidesResult.status === 'rejected') degraded.push('tides')
+
+  const tideDays = tidesResult.status === 'fulfilled' ? tidesResult.value : {}
 
   const byDate = new Map()
 
@@ -192,6 +196,8 @@ export async function fetchMetNoForecast() {
       gustMax: Number.isFinite(day.gustMax) ? day.gustMax : 0,
       tempMin: Number.isFinite(day.tempMin) ? day.tempMin : 0,
       tempMax: Number.isFinite(day.tempMax) ? day.tempMax : 0,
+      tides: tideDays[day.date]?.nodes ?? [],
+      tidePoints: tideDays[day.date]?.points ?? [],
     }))
 
   return {

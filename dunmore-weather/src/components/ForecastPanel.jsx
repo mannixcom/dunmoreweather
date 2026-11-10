@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { RISK_THRESHOLDS } from '../constants'
 import { compassLabel, evaluateLaunch } from '../logic/risk'
+import TideCurve from './TideCurve'
 
 const WEEKDAY_FORMATTER = new Intl.DateTimeFormat('en-IE', {
   weekday: 'short',
@@ -43,8 +44,6 @@ function DayCard({ day, group, gustEstimated, index }) {
   const date = parseDateKey(day.date)
   const isToday = day.date === TODAY_KEY
 
-  const gustPct = Math.min(100, Math.max(4, (day.gustMax / limits.maxGust) * 100))
-  const barTone = evaluation.isWindViolated ? 'bg-rose-500' : 'bg-emerald-500'
   const waveViolated = day.seaKnown && day.waveMax != null && day.waveMax > limits.maxWave
 
   return (
@@ -126,13 +125,15 @@ function DayCard({ day, group, gustEstimated, index }) {
         </div>
       </dl>
 
-      <div className="mt-3">
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
-          <div className={`h-full rounded-full ${barTone}`} style={{ width: `${gustPct}%` }} />
-        </div>
-        <p className="mt-1 text-[9px] uppercase tracking-wider text-slate-500">
-          Gust vs {limits.maxGust} kt limit
+      <div className="mt-3 border-t border-slate-700/50 pt-2">
+        <p className="mb-1 text-[9px] uppercase tracking-wider text-slate-500">
+          Tide · high &amp; low
         </p>
+        <TideCurve
+          tides={day.tides ?? []}
+          points={day.tidePoints ?? []}
+          dateKey={day.date}
+        />
       </div>
     </article>
   )
@@ -229,7 +230,7 @@ export default function ForecastPanel({
       <p className="text-[11px] text-slate-500">
         {gustEstimated ? '* Gusts estimated from sustained wind — MET Norway provides no gust field. ' : ''}
         Daily figures are worst-case maxima for the day. Sea state shown as “n/a” where the source
-        has no marine coverage.
+        has no marine coverage. Tide curves are model-derived from Open-Meteo sea-level data.
       </p>
     </section>
   )

@@ -1,5 +1,5 @@
 import { ANCHOR } from '../constants'
-import { fetchTides } from './tides'
+import { fetchTides, fetchDailyTides } from './tides'
 import { fetchOpenMeteoMarineCurrent, fetchOpenMeteoMarineDaily } from './weather'
 
 const MS_TO_KT = 1.943844
@@ -158,9 +158,10 @@ export async function fetchMetEireannCurrent() {
 }
 
 export async function fetchMetEireannForecast() {
-  const [xmlResult, marineResult] = await Promise.allSettled([
+  const [xmlResult, marineResult, tidesResult] = await Promise.allSettled([
     fetchDocument(),
     fetchOpenMeteoMarineDaily(),
+    fetchDailyTides(),
   ])
 
   if (xmlResult.status === 'rejected') {
@@ -169,6 +170,9 @@ export async function fetchMetEireannForecast() {
 
   const degraded = []
   if (marineResult.status === 'rejected') degraded.push('marine')
+  if (tidesResult.status === 'rejected') degraded.push('tides')
+
+  const tideDays = tidesResult.status === 'fulfilled' ? tidesResult.value : {}
 
   const series = parseSeries(xmlResult.value)
   const byDate = new Map()
@@ -223,6 +227,8 @@ export async function fetchMetEireannForecast() {
         swellMax:
           index == null ? null : numOrNull(marineDaily.swell_wave_height_max?.[index]),
         seaKnown: waveMax != null,
+        tides: tideDays[day.date]?.nodes ?? [],
+        tidePoints: tideDays[day.date]?.points ?? [],
       }
     })
 

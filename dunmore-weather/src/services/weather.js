@@ -1,5 +1,5 @@
 import { ANCHOR } from '../constants'
-import { fetchTides } from './tides'
+import { fetchTides, fetchDailyTides } from './tides'
 
 const WEATHER_URL =
   'https://api.open-meteo.com/v1/forecast' +
@@ -98,9 +98,10 @@ export async function fetchMarineTelemetry(options = {}) {
 }
 
 export async function fetchOpenMeteoForecast(options = {}) {
-  const [weatherResult, marineResult] = await Promise.allSettled([
+  const [weatherResult, marineResult, tidesResult] = await Promise.allSettled([
     fetchJson(withModel(WEATHER_DAILY_URL, options.model)),
     fetchOpenMeteoMarineDaily(),
+    fetchDailyTides(),
   ])
 
   if (weatherResult.status === 'rejected') {
@@ -111,6 +112,9 @@ export async function fetchOpenMeteoForecast(options = {}) {
   const w = weatherResult.value?.daily ?? {}
   const m = marineResult.status === 'fulfilled' ? marineResult.value?.daily ?? {} : {}
   if (marineResult.status === 'rejected') degraded.push('marine')
+
+  const tideDays = tidesResult.status === 'fulfilled' ? tidesResult.value : {}
+  if (tidesResult.status === 'rejected') degraded.push('tides')
 
   const dates = w.time ?? []
   const days = []
@@ -133,6 +137,8 @@ export async function fetchOpenMeteoForecast(options = {}) {
       tempMax,
       precip: num(w.precipitation_sum?.[i]),
       seaKnown: waveMax != null,
+      tides: tideDays[date]?.nodes ?? [],
+      tidePoints: tideDays[date]?.points ?? [],
     })
   })
 

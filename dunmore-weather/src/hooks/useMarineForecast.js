@@ -43,11 +43,17 @@ export function useMarineForecast(providerId, enabled) {
 
       if (!force) {
         const cached = readCache('forecast', providerId)
-        if (cached?.isFresh) {
+        const cachedDays = cached?.data.days ?? []
+        const cacheHasTides =
+          cachedDays.length > 0 &&
+          cachedDays.every(
+            (day) => Array.isArray(day.tides) && Array.isArray(day.tidePoints),
+          )
+        if (cached?.isFresh && cacheHasTides) {
           setState({
             ...initialState(providerId),
-            days: cached.data.days ?? [],
-            coverageDays: cached.data.coverageDays ?? cached.data.days?.length ?? 0,
+            days: cachedDays,
+            coverageDays: cached.data.coverageDays ?? cachedDays.length,
             status: 'ready',
             fetchedAt: cached.timestamp,
           })
